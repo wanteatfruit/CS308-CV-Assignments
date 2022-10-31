@@ -65,92 +65,76 @@ def get_features(image, x, y, feature_width, scales=None):
     # decrease your matching accuracy.                                          #
     #############################################################################
 
-    num_bins = 36
-    key_points = list(zip(x,y))
-    for p in key_points:
+    image = np.transpose(image) # row, column
+    key_points = list(zip(x,y)) # row, column
+    size = int(feature_width/4)
+    image = np.pad(image, ((size, size),(size,size)))
+    # gradients
+    gx = np.gradient(image,axis=1)
+    gy = np.gradient(image,axis=0)
+    grad_mag = np.sqrt(gx**2+gy**2)
+    grad_dir = np.arctan2(gy, gx)*180/np.pi
+
+
+    fv=[]
+    for kp in key_points:
+        des = find_descriptor(kp,size,image,gx,gy,grad_mag,grad_dir)
+        fv.append(des)
         
-    #############################################################################
-    #                             END OF YOUR CODE                              #
-    #############################################################################
-    return fv
-    # Swap the coordinate to work with nupy array
-    x, y = y, x
-
-    size = int(feature_width//4)
-
-    # Calculate the Ix, Iy gradient vector
-    Ix = cv2.Sobel(image, cv2.CV_32F, 1, 0, ksize=5)
-    Iy = cv2.Sobel(image, cv2.CV_32F, 0, 1, ksize=5)
-
-    # Calculate the descriptors
-    descriptors = np.zeros((x.shape[0], 128))
-
-    for i, (kx, ky) in enumerate(zip(x, y)):
-        descriptors[i] = single_128_feature_vector(
-            Ix, Iy, int(kx), int(ky), size)
-
-    return descriptors
-
-    #############################################################################
-    #                             END OF YOUR CODE                              #
-    #############################################################################
+    return np.array(fv)
 
 
-def single_128_feature_vector(Ix, Iy, kx, ky, size):
-    descriptor = []
+def find_descriptor(key_point, size, image, gx, gy, grad_mag, grad_dir):
+    # create 4*4 cell
+    # ----
+    desc = []  # 8 histogram
+    x, y = key_point
     for ix in range(-2, 2):
         for iy in range(-2, 2):
-            locx, locy = kx + ix*size, ky + iy*size
-            histogram8 = histogram8bins(Ix, Iy, int(locx), int(locy), size)
-            descriptor.append(histogram8)
+            # up left coordinate
+            cell_x = x+size*ix
+            cell_y = y+size*iy
+            hist = find_histogram(gx, gy, image, cell_x,
+                                  cell_y, size, grad_mag, grad_dir)
+            desc.append(hist)
+    descriptor = np.array(desc).reshape((128, 1))
 
-    descriptor = np.array(descriptor).flatten()
-
-    #Normalize the descriptor
-    descriptor = descriptor / np.linalg.norm(descriptor)
-    descriptor = np.clip(descriptor, 0, 0.2)
-    descriptor = descriptor / np.linalg.norm(descriptor)
-
+    # normalize
+    descriptor = descriptor/np.linalg.norm(descriptor)
     return descriptor
 
 
-def histogram8bins(Ix, Iy, indx, indy, size):
-    '''
-        Given a window of image (square of: size x size)
-        Return the total value of 8 bin histogram [0,45,90,135,180,225,270,325]
-    '''
-    histogram8 = np.zeros(8)
+def find_histogram(gx, gy, image, cell_x, cell_y, size, grad_mag, grad_dir):
+    hist = np.zeros(8)  # [0,45,90,135,180,225,270,325]
+    bins = [0,45,90,135,180,225,270,325,360]
     for x in range(size):
         for y in range(size):
-            histogram8 = histogram8 + \
-                pixel2histogram(Ix[indx+x, indy+y], Iy[indx+x, indy+y])
+            cur_x = cell_x+x
+            cur_y = cell_y+y
+            magnitude = grad_mag[cur_x, cur_y]
+            direction = grad_dir[cur_x, cur_y]
+            if direction < 0:
+                direction += 360
+            if direction == 360:
+                direction = 0
+            bin_left = int(direction//45)
+            bin_right = int(direction//45+1)
+            dist_left = direction-bins[bin_left]
+            dist_right = bins[bin_right]-direction # could be 360
+            # calculate proportion
+            prop_left = dist_left/45
+            prop_right = dist_right/45
 
-    return list(histogram8)
+            hist[bin_left] = prop_left*magnitude
+            if bin_right==8:
+                bin_right=0
+            hist[bin_right] = prop_right*magnitude
 
+            # Note that if a pixel is halfway between two bins,
+            # then it splits up the magnitudes accordingly
+            # depending on their distance away from each respective bin     .
 
-def pixel2histogram(ix, iy):
-    '''
-        Given a gradient of a pixel in Cart form (ix, iy), convert to 8 bin histogram [0,45,90,135,180,225,270,325]
-        Input:
-            ix, iy: gradient at a given pixel
-        Return:
-            Histogram of this new pixel: array same length as [0,45,90,135,180,225,270,325]
-    '''
-    # Convert to polar
-    mag = np.sqrt(ix**2 + iy**2)
-    phase = np.arctan2(iy, ix)*180/np.pi
-
-    # convert from -180 --> 180 to 0 to 360
-    phase = phase + 360 if phase < 0 else phase
-    left = int(phase//45)
-    right = int(phase//45 + 1)  # if phase>325, right = 360
-
-    # padding 360 deg at the end to transform to [...,225,270,325,360]
-    pixel_histogram = np.zeros(9)
-    # Separate the vector into 2 nearby angles
-    pixel_histogram[right] = mag*(phase-45*left)/45
-    pixel_histogram[left] = mag*(45*right-phase)/45
-    # If the right = 8 or phase = 360, then it is equivalent to add to 0
-    pixel_histogram[0] += pixel_histogram[8]
-
-    return pixel_histogram[:8]
+    return hist
+    #############################################################################
+    #                             END OF YOUR CODE                              #
+    #############################################################################

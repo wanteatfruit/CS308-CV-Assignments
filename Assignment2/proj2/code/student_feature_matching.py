@@ -37,9 +37,31 @@ def match_features(features1, features2, x1, y1, x2, y2):
     #############################################################################
     # TODO: YOUR CODE HERE                                                        #
     #############################################################################
+    match_pairs = []
 
-    raise NotImplementedError('`match_features` function in ' +
-        '`student_feature_matching.py` needs to be implemented')
+    for idx1 in range(features1.shape[0]):
+        # Broadcasting to calculate the distance to feature1[idx1]
+        distance = np.linalg.norm(features1[idx1]-features2, axis=1)
+
+        # Find out the best and second best indexes
+        idx2, idx2_second_best = np.argsort(distance)[:2]
+        ratio = distance[idx2]/distance[idx2_second_best]
+
+        # Follow the paper to only select the pair where ratio[best]< 0.8*ratio[second_best]
+        if ratio < 0.8:
+            match_pairs.append([idx1, idx2, ratio])
+
+    sorted_match_pairs = sorted(match_pairs, key=lambda x: x[2])
+    sorted_match_pairs = np.array(sorted_match_pairs)
+
+    matches = sorted_match_pairs[:, 0:2]
+    matches = matches.astype(int)
+    confidences = sorted_match_pairs[:, 2]
+
+    #############################################################################
+    #                             END OF YOUR CODE                              #
+    #############################################################################
+    return matches, confidences
 
     #############################################################################
     #                             END OF YOUR CODE                              #
