@@ -90,7 +90,7 @@ def get_interest_points(image, feature_width):
     for j in range(height):
         for i in range(width):
             r = har[j][i]
-            if r>0.01*max:
+            if r>0.02*max:
                 x.append(i)
                 y.append(j)
 

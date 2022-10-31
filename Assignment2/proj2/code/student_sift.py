@@ -66,6 +66,7 @@ def get_features(image, x, y, feature_width, scales=None):
     #############################################################################
 
     image = np.transpose(image) # row, column
+    print(image.shape)
     key_points = list(zip(x,y)) # row, column
     size = int(feature_width/4)
     image = np.pad(image, ((size, size),(size,size)))
@@ -81,7 +82,7 @@ def get_features(image, x, y, feature_width, scales=None):
         des = find_descriptor(kp,size,image,gx,gy,grad_mag,grad_dir)
         fv.append(des)
         
-    return np.array(fv)
+    return np.array(fv).reshape(len(key_points),128)
 
 
 def find_descriptor(key_point, size, image, gx, gy, grad_mag, grad_dir):
@@ -101,6 +102,9 @@ def find_descriptor(key_point, size, image, gx, gy, grad_mag, grad_dir):
 
     # normalize
     descriptor = descriptor/np.linalg.norm(descriptor)
+    descriptor = np.clip(descriptor, 0, 0.2)
+    descriptor = descriptor / np.linalg.norm(descriptor)
+
     return descriptor
 
 
@@ -121,14 +125,14 @@ def find_histogram(gx, gy, image, cell_x, cell_y, size, grad_mag, grad_dir):
             bin_right = int(direction//45+1)
             dist_left = direction-bins[bin_left]
             dist_right = bins[bin_right]-direction # could be 360
-            # calculate proportion
-            prop_left = dist_left/45
-            prop_right = dist_right/45
+            # calculate proportion, smaller distance has greater weights
+            prop_left = (45-dist_left)/45
+            prop_right = (45-dist_right)/45
 
-            hist[bin_left] = prop_left*magnitude
+            hist[bin_left] += prop_left*magnitude
             if bin_right==8:
                 bin_right=0
-            hist[bin_right] = prop_right*magnitude
+            hist[bin_right] += prop_right*magnitude
 
             # Note that if a pixel is halfway between two bins,
             # then it splits up the magnitudes accordingly
