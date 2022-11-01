@@ -61,8 +61,8 @@ def get_interest_points(image, feature_width):
     soble_y = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
 
     # TODO: difference between convolve2d and filter2D?
-    I_x = cv2.Sobel(gray_img, cv2.CV_32F, 1, 0, ksize=3)
-    I_y = cv2.Sobel(gray_img, cv2.CV_32F, 0, 1, ksize=3)
+    I_x = cv2.Sobel(gray_img, cv2.CV_32F, 1, 0, ksize=5)
+    I_y = cv2.Sobel(gray_img, cv2.CV_32F, 0, 1, ksize=5)
     
     Ixx = I_x**2
     Iyy = I_y**2
@@ -72,17 +72,17 @@ def get_interest_points(image, feature_width):
 
     height, width = gray_img.shape
 
-    gaussian = cv2.getGaussianKernel(ksize=5, sigma=1)
+    gaussian = cv2.getGaussianKernel(ksize=9, sigma=2)
     # gaussian = np.dot(gaussian,gaussian)
 
 
-    Gxx = cv2.filter2D(Ixx, -2, gaussian)
-    Gyy = cv2.filter2D(Iyy, -2, gaussian)
-    Gxy = cv2.filter2D(Ixy, -2, gaussian)
+    Gxx = cv2.filter2D(Ixx, cv2.CV_32F, gaussian)
+    Gyy = cv2.filter2D(Iyy, cv2.CV_32F, gaussian)
+    Gxy = cv2.filter2D(Ixy, cv2.CV_32F, gaussian)
 
-    Gxx = cv2.filter2D(Ixx, -2, gaussian.T)
-    Gyy = cv2.filter2D(Iyy, -2, gaussian.T)
-    Gxy = cv2.filter2D(Ixy, -2, gaussian.T)
+    Gxx = cv2.filter2D(Ixx, cv2.CV_32F, gaussian.T)
+    Gyy = cv2.filter2D(Iyy, cv2.CV_32F, gaussian.T)
+    Gxy = cv2.filter2D(Ixy, cv2.CV_32F, gaussian.T)
 
 
     det = Gxx*Gyy - Gxy**2
@@ -108,33 +108,6 @@ def get_interest_points(image, feature_width):
     
     #############################################################################
     # TODO: YOUR ADAPTIVE NON-MAXIMAL SUPPRESSION CODE HERE                     #
-    # While most feature detectors simply look for local maxima in              #
-    # the interest function, this can lead to an uneven distribution            #
-    # of feature points across the image, e.g., points will be denser           #
-    # in regions of higher contrast. To mitigate this problem, Brown,           #
-    # Szeliski, and Winder (2005) only detect features that are both            #
-    # local maxima and whose response value is significantly (10%)              #
-    # greater than that of all of its neighbors within a radius r. The          #
-    # goal is to retain only those points that are a maximum in a               #
-    # neighborhood of radius r pixels. One way to do so is to sort all          #
-    # points by the response strength, from large to small response.            #
-    # The first entry in the list is the global maximum, which is not           #
-    # suppressed at any radius. Then, we can iterate through the list           #
-    # and compute the distance to each interest point ahead of it in            #
-    # the list (these are pixels with even greater response strength).          #
-    # The minimum of distances to a keypoint's stronger neighbors               #
-    # (multiplying these neighbors by >=1.1 to add robustness) is the           #
-    # radius within which the current point is a local maximum. We              #
-    # call this the suppression radius of this interest point, and we           #
-    # save these suppression radii. Finally, we sort the suppression            #
-    # radii from large to small, and return the n keypoints                     #
-    # associated with the top n suppression radii, in this sorted               #
-    # orderself. Feel free to experiment with n, we used n=1500.                #
-    #                                                                           #
-    # See:                                                                      #
-    # https://www.microsoft.com/en-us/research/wp-content/uploads/2005/06/cvpr05.pdf
-    # or                                                                        #
-    # https://www.cs.ucsb.edu/~holl/pubs/Gauglitz-2011-ICIP.pdf                 #
     #############################################################################
     image = np.transpose(image) # y,x -> x,y
     response_pairs=[]
@@ -152,18 +125,15 @@ def get_interest_points(image, feature_width):
         x = response_pairs[i,0]
         y = response_pairs[i,1]
 
-        cur_response = response_pairs[i,2]
         min_distance = radiis[0]
         for j in range(i): # iterate elements before i
             
-            stronger_x = response_pairs[j,0]
-            stronger_y = response_pairs[j,1]
-            stronger_resposne = response_pairs[j,2]
-            if stronger_resposne>=1.1*cur_response: 
+            stronger_x = response_pairs[j,0]*1.1
+            stronger_y = response_pairs[j,1]*1.1
 
-                distance = np.sqrt(np.square(stronger_x-x)+np.square(stronger_y-y))
-                if distance<min_distance:
-                    min_distance=distance
+            distance = np.sqrt(np.square(stronger_x-x)+np.square(stronger_y-y))
+            if distance<min_distance:
+                min_distance=distance
         radiis[i]=min_distance
 
     sorted_radiis = np.array(radiis)
