@@ -115,8 +115,8 @@ def find_histogram(gx, gy, image, cell_x, cell_y, size, grad_mag, grad_dir):
         for y in range(size):
             cur_x = cell_x+x
             cur_y = cell_y+y
-            magnitude = grad_mag[cur_x, cur_y]
-            direction = grad_dir[cur_x, cur_y]
+            magnitude = grad_mag[int(cur_x), int(cur_y)]
+            direction = grad_dir[int(cur_x), int(cur_y)]
             if direction < 0:
                 direction += 360
             if direction == 360:

@@ -198,10 +198,10 @@ def load_corr_pkl_file(corr_fpath):
     """ Load ground truth correspondences from a pickle (.pkl) file. """
     with open(corr_fpath, 'rb') as f:
         d = pickle.load(f, encoding='latin1')
-    x1 = d['x1'].squeeze()
-    y1 = d['y1'].squeeze()
-    x2 = d['x2'].squeeze()
-    y2 = d['y2'].squeeze()
+    x1 = np.array(d['x1']).squeeze()
+    y1 = np.array(d['y1']).squeeze()
+    x2 = np.array(d['x2']).squeeze()
+    y2 = np.array(d['y2']).squeeze()
 
     return x1,y1,x2,y2
 

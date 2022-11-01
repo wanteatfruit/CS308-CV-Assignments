@@ -50,6 +50,7 @@ def get_interest_points(image, feature_width):
     #############################################################################
     x=[]
     y=[]
+    responses=[]
     #Convert to gray
     if len(image.shape)==3:
         gray_img = rgb2gray(image)
@@ -80,7 +81,7 @@ def get_interest_points(image, feature_width):
 
     det = Gxx*Gyy - Gxy**2
     trace = Gxx+Gyy
-    alpha = 0.04
+    alpha = 0.06
     har = det - alpha*(trace**2)
 
     # cv2.normalize(har,har,0,1,cv2.NORM_MINMAX)
@@ -93,7 +94,7 @@ def get_interest_points(image, feature_width):
             if r>0.02*max:
                 x.append(i)
                 y.append(j)
-
+                responses.append(r)
                 
     #############################################################################
     #                             END OF YOUR CODE                              #
@@ -129,6 +130,49 @@ def get_interest_points(image, feature_width):
     # or                                                                        #
     # https://www.cs.ucsb.edu/~holl/pubs/Gauglitz-2011-ICIP.pdf                 #
     #############################################################################
+    image = np.transpose(image) # y,x -> x,y
+    response_pairs=[]
+    for i in range(len(responses)):
+        response_pairs.append([x[i],y[i],responses[i]])
+    response_pairs = sorted(response_pairs, key= lambda x:x[2],reverse=True) # sort by response value
+    response_pairs = np.array(response_pairs)
+
+    fig_distance = np.sqrt(image.shape[0]**2+image.shape[1]**2)\
+    
+    radiis = np.full(len(responses),fig_distance)
+
+    
+    for i in range(1,len(response_pairs)):
+        x = int(response_pairs[i,0])
+        y = int(response_pairs[i,1])
+
+        cur_response = response_pairs[i,2]
+        min_distance = radiis[0]
+        for j in range(i): # iterate elements before i
+             # max radius
+            
+            stronger_x = int(response_pairs[j,0])
+            stronger_y = int(response_pairs[j,1])
+            stronger_resposne = response_pairs[j,2]
+            if stronger_resposne>=cur_response*1.1: 
+
+                distance = np.sqrt(np.square(stronger_x-x)+np.square(stronger_y-y))
+                if distance<min_distance:
+                    min_distance=distance
+        radiis[i]=min_distance
+
+    sorted_radiis = np.array(radiis)
+    sorted_radiis = np.argsort(sorted_radiis) # sort index small to big
+
+    # response_pairs = np.hstack((response_pairs,radiis))
+    # response_pairs = sorted(response_pairs, key=lambda x:x[3], reverse=True)
+    x=[]
+    y=[]
+    for i in range(1500): # n=1500
+
+        x.append(response_pairs[sorted_radiis[i],0])
+        y.append(response_pairs[sorted_radiis[i],1])
+
 
 
     #############################################################################
