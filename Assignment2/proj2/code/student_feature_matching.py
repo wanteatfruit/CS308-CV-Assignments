@@ -48,7 +48,7 @@ def match_features(features1, features2, x1, y1, x2, y2):
         ratio = distance[idx2]/distance[idx2_second_best]
 
         # Follow the paper to only select the pair where ratio[best]< 0.8*ratio[second_best]
-        if ratio < 0.75:
+        if ratio < 0.8:
             match_pairs.append([idx1, idx2, ratio])
 
     sorted_match_pairs = sorted(match_pairs, key=lambda x: x[2])

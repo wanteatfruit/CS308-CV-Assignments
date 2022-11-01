@@ -61,8 +61,8 @@ def get_interest_points(image, feature_width):
     soble_y = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
 
     # TODO: difference between convolve2d and filter2D?
-    I_x = cv2.Sobel(gray_img, -1, 1, 0, ksize=3)
-    I_y = cv2.Sobel(gray_img, -1, 0, 1, ksize=3)
+    I_x = cv2.Sobel(gray_img, cv2.CV_32F, 1, 0, ksize=3)
+    I_y = cv2.Sobel(gray_img, cv2.CV_32F, 0, 1, ksize=3)
     
     Ixx = I_x**2
     Iyy = I_y**2
@@ -72,12 +72,18 @@ def get_interest_points(image, feature_width):
 
     height, width = gray_img.shape
 
-    gaussian = cv2.getGaussianKernel(ksize=9, sigma=2)
+    gaussian = cv2.getGaussianKernel(ksize=5, sigma=1)
+    # gaussian = np.dot(gaussian,gaussian)
 
 
     Gxx = cv2.filter2D(Ixx, -2, gaussian)
     Gyy = cv2.filter2D(Iyy, -2, gaussian)
     Gxy = cv2.filter2D(Ixy, -2, gaussian)
+
+    Gxx = cv2.filter2D(Ixx, -2, gaussian.T)
+    Gyy = cv2.filter2D(Iyy, -2, gaussian.T)
+    Gxy = cv2.filter2D(Ixy, -2, gaussian.T)
+
 
     det = Gxx*Gyy - Gxy**2
     trace = Gxx+Gyy
@@ -91,7 +97,7 @@ def get_interest_points(image, feature_width):
     for j in range(height):
         for i in range(width):
             r = har[j][i]
-            if r>0.02*max:
+            if r>0.01*max:
                 x.append(i)
                 y.append(j)
                 responses.append(r)
@@ -137,24 +143,23 @@ def get_interest_points(image, feature_width):
     response_pairs = sorted(response_pairs, key= lambda x:x[2],reverse=True) # sort by response value
     response_pairs = np.array(response_pairs)
 
-    fig_distance = np.sqrt(image.shape[0]**2+image.shape[1]**2)\
-    
+    fig_distance = np.sqrt(image.shape[0]**2+image.shape[1]**2)
+    print(fig_distance)
     radiis = np.full(len(responses),fig_distance)
 
     
     for i in range(1,len(response_pairs)):
-        x = int(response_pairs[i,0])
-        y = int(response_pairs[i,1])
+        x = response_pairs[i,0]
+        y = response_pairs[i,1]
 
         cur_response = response_pairs[i,2]
         min_distance = radiis[0]
         for j in range(i): # iterate elements before i
-             # max radius
             
-            stronger_x = int(response_pairs[j,0])
-            stronger_y = int(response_pairs[j,1])
+            stronger_x = response_pairs[j,0]
+            stronger_y = response_pairs[j,1]
             stronger_resposne = response_pairs[j,2]
-            if stronger_resposne>=cur_response*1.1: 
+            if stronger_resposne>=1.1*cur_response: 
 
                 distance = np.sqrt(np.square(stronger_x-x)+np.square(stronger_y-y))
                 if distance<min_distance:
@@ -162,8 +167,10 @@ def get_interest_points(image, feature_width):
         radiis[i]=min_distance
 
     sorted_radiis = np.array(radiis)
-    sorted_radiis = np.argsort(sorted_radiis) # sort index small to big
-
+    print(radiis)
+    sorted_radiis = np.argsort(sorted_radiis) 
+    sorted_radiis = np.flip(sorted_radiis)
+    print(sorted_radiis)
     # response_pairs = np.hstack((response_pairs,radiis))
     # response_pairs = sorted(response_pairs, key=lambda x:x[3], reverse=True)
     x=[]

@@ -102,8 +102,8 @@ def find_descriptor(key_point, size, image, gx, gy, grad_mag, grad_dir):
 
     # normalize
     descriptor = descriptor/np.linalg.norm(descriptor)
-    descriptor = np.clip(descriptor, 0, 0.2)
-    descriptor = descriptor / np.linalg.norm(descriptor)
+    # descriptor = np.clip(descriptor, 0, 0.2)
+    # descriptor = descriptor / np.linalg.norm(descriptor)
 
     return descriptor
 
