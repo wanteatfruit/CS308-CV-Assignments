@@ -128,12 +128,12 @@ def get_interest_points(image, feature_width):
         min_distance = radiis[0]
         for j in range(i): # iterate elements before i
             
-            stronger_x = response_pairs[j,0]*1.1
-            stronger_y = response_pairs[j,1]*1.1
-
-            distance = np.sqrt(np.square(stronger_x-x)+np.square(stronger_y-y))
-            if distance<min_distance:
-                min_distance=distance
+            stronger_x = response_pairs[j,0]
+            stronger_y = response_pairs[j,1]
+            if response_pairs[j,2]>1.1*response_pairs[i,2]:
+                distance = np.sqrt(np.square(stronger_x-x)+np.square(stronger_y-y))
+                if distance<min_distance:
+                    min_distance=distance
         radiis[i]=min_distance
 
     sorted_radiis = np.array(radiis)
@@ -145,7 +145,7 @@ def get_interest_points(image, feature_width):
     # response_pairs = sorted(response_pairs, key=lambda x:x[3], reverse=True)
     x=[]
     y=[]
-    for i in range(1500): # n=1500
+    for i in range(100): # n=1500
 
         x.append(response_pairs[sorted_radiis[i],0])
         y.append(response_pairs[sorted_radiis[i],1])
