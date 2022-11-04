@@ -38,25 +38,25 @@ def match_features(features1, features2, x1, y1, x2, y2):
     # TODO: YOUR CODE HERE                                                        #
     #############################################################################
     match_pairs = []
+    confidences = []
 
-    for idx1 in range(features1.shape[0]):
-        # Broadcasting to calculate the distance to feature1[idx1]
-        distance = np.linalg.norm(features1[idx1]-features2, axis=1)
+    for i in range(features1.shape[0]):
+        distances = []
+        for j in range(features2.shape[0]):
+                dist = np.linalg.norm(features1[i]-features2[j])
+                distances.append(dist)
+        distances = np.array(distances)
+        sorted_dist = np.argsort(distances) # ascending order
+        best = distances[sorted_dist[0]]
+        second_best = distances[sorted_dist[1]]
+        ratio = best/second_best
+        if ratio <0.8:
+                match_pairs.append([i,sorted_dist[0]])
+                confidences.append(ratio)
 
-        # Find out the best and second best indexes
-        idx2, idx2_second_best = np.argsort(distance)[:2]
-        ratio = distance[idx2]/distance[idx2_second_best]
-
-        # Follow the paper to only select the pair where ratio[best]< 0.8*ratio[second_best]
-        if ratio < 0.8:
-            match_pairs.append([idx1, idx2, ratio])
-
-    sorted_match_pairs = sorted(match_pairs, key=lambda x: x[2])
-    sorted_match_pairs = np.array(sorted_match_pairs)
-
-    matches = sorted_match_pairs[:, 0:2]
-    matches = matches.astype(int)
-    confidences = sorted_match_pairs[:, 2]
+    match_pairs = np.array(match_pairs)
+    confidences = np.array(confidences)
+    matches = match_pairs.astype(int)
 
     #############################################################################
     #                             END OF YOUR CODE                              #
