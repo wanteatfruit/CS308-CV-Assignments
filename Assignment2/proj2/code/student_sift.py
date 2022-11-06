@@ -69,7 +69,7 @@ def get_features(image, x, y, feature_width, scales=None):
     print(image.shape)
     key_points = list(zip(x,y)) # row, column
     size = int(feature_width/4)
-    image = np.pad(image, ((size, size),(size,size)))
+    image = np.pad(image, ((size, size),(size,size))) #prevent out of bound
     # gradients
     gx = np.gradient(image,axis=1)
     gy = np.gradient(image,axis=0)
@@ -102,7 +102,7 @@ def find_descriptor(key_point, size, image, gx, gy, grad_mag, grad_dir):
 
     # normalize
     descriptor = descriptor/np.linalg.norm(descriptor)
-    # descriptor = np.clip(descriptor, 0, 0.2)
+    # descriptor = np.clip(descriptor, 0, 0.2) # follow HOG paper
     # descriptor = descriptor / np.linalg.norm(descriptor)
 
     return descriptor
@@ -123,8 +123,8 @@ def find_histogram(gx, gy, image, cell_x, cell_y, size, grad_mag, grad_dir):
                 direction = 0
             bin_left = int(direction//45)
             bin_right = int(direction//45+1)
-            dist_left = direction-bins[bin_left]
-            dist_right = bins[bin_right]-direction # could be 360
+            dist_left = np.absolute(direction-bins[bin_left])
+            dist_right = np.absolute(bins[bin_right]-direction)  # could be 360
             # calculate proportion, smaller distance has greater weights
             prop_left = (45-dist_left)/45
             prop_right = (45-dist_right)/45
