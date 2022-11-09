@@ -61,8 +61,8 @@ def get_interest_points(image, feature_width):
     soble_y = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
 
     # TODO: difference between convolve2d and filter2D?
-    I_x = cv2.Sobel(gray_img, cv2.CV_32F, 1, 0, ksize=5)
-    I_y = cv2.Sobel(gray_img, cv2.CV_32F, 0, 1, ksize=5)
+    I_x = cv2.Sobel(gray_img, cv2.CV_32F, 1, 0, ksize=3)
+    I_y = cv2.Sobel(gray_img, cv2.CV_32F, 0, 1, ksize=3)
     
     Ixx = I_x**2
     Iyy = I_y**2
@@ -72,7 +72,7 @@ def get_interest_points(image, feature_width):
 
     height, width = gray_img.shape
 
-    gaussian = cv2.getGaussianKernel(ksize=9, sigma=2)
+    gaussian = cv2.getGaussianKernel(ksize=5, sigma=1)
     # gaussian = np.dot(gaussian,gaussian)
 
 
@@ -128,26 +128,29 @@ def get_interest_points(image, feature_width):
         min_distance = radiis[0]
         for j in range(i): # iterate elements before i
             
-            stronger_x = response_pairs[j,0]*1.1
-            stronger_y = response_pairs[j,1]*1.1
+            stronger_x = response_pairs[j,0]
+            stronger_y = response_pairs[j,1]
             distance = np.sqrt(np.square(stronger_x-x)+np.square(stronger_y-y))
             if distance<min_distance:
                 min_distance=distance
         radiis[i]=min_distance
 
     sorted_radiis = np.array(radiis)
-    print(radiis)
+    print(radiis[1])
     sorted_radiis = np.argsort(sorted_radiis) 
-    sorted_radiis = np.flip(sorted_radiis)
-    print(sorted_radiis)
+    # sorted_radiis = np.flip(sorted_radiis)
+    print(sorted_radiis[1])
     # response_pairs = np.hstack((response_pairs,radiis))
     # response_pairs = sorted(response_pairs, key=lambda x:x[3], reverse=True)
     x=[]
     y=[]
+    confidences=[]
     for i in range(1500): # n=1500
 
-        x.append(response_pairs[sorted_radiis[i],0])
-        y.append(response_pairs[sorted_radiis[i],1])
+        x.append(response_pairs[sorted_radiis[len(sorted_radiis)-i-1],0])
+        y.append(response_pairs[sorted_radiis[len(sorted_radiis)-i-1], 1])
+        confidences.append(response_pairs[sorted_radiis[len(sorted_radiis)-i-1], 2])
+
 
 
 
