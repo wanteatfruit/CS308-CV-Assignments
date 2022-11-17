@@ -2,14 +2,14 @@ import cv2
 import numpy as np
 import pickle
 from utils import load_image, load_image_gray
-import cyvlfeat as vlfeat
+# import cyvlfeat as vlfeat
 import sklearn.metrics.pairwise as sklearn_pairwise
 from sklearn.svm import LinearSVC
 from IPython.core.debugger import set_trace
 from PIL import Image
 import scipy.spatial.distance as distance
-from cyvlfeat.sift.dsift import dsift
-from cyvlfeat.kmeans import kmeans
+# from cyvlfeat.sift.dsift import dsift
+# from cyvlfeat.kmeans import kmeans
 from time import time
 
 
@@ -41,13 +41,18 @@ def get_tiny_images(image_paths):
     """
     # dummy feats variable
     feats = []
+    for p in image_paths:
+        img = load_image_gray(p)
+        img_resize = cv2.resize(img,(16,16))
+        img_vec = np.reshape(img_resize,(256,))
+        # img_vec = np.linalg.norm(img_vec)
+        feats.append(list(img_vec))
 
+    feats = np.array(feats)
+    print(feats.shape)
     #############################################################################
     # TODO: YOUR CODE HERE                                                      #
     #############################################################################
-
-    raise NotImplementedError('`get_tiny_images` function in ' +
-                              '`student_code.py` needs to be implemented')
 
     #############################################################################
     #                             END OF YOUR CODE                              #
@@ -115,8 +120,7 @@ def build_vocabulary(image_paths, vocab_size):
     # TODO: YOUR CODE HERE                                                      #
     #############################################################################
 
-    raise NotImplementedError('`build_vocabulary` function in ' +
-                              '`student_code.py` needs to be implemented') 
+
 
     #############################################################################
     #                             END OF YOUR CODE                              #
@@ -239,13 +243,19 @@ def nearest_neighbor_classify(train_image_feats, train_labels, test_image_feats,
     # TODO: YOUR CODE HERE                                                      #
     #############################################################################
 
-    raise NotImplementedError('`nearest_neighbor_classify` function in ' +
-                              '`student_code.py` needs to be implemented')
-    
+    D = sklearn_pairwise.pairwise_distances(test_image_feats,train_image_feats) #d(i, j) is the distance between row
+            #i of X and row j of Y
+    k = 1
+    for row in D: # for each test image
+        sorted_row = np.argsort(row)
+        k_idx = sorted_row[:k]
+        if k==1:
+            test_labels.append(train_labels[k_idx[0]])
+    # print(result)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
-
+    # print(test_labels)
     return test_labels
 
 
