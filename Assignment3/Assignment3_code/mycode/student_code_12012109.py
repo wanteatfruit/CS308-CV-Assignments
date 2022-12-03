@@ -2,14 +2,17 @@ import cv2
 import numpy as np
 import pickle
 from utils import load_image, load_image_gray
-# import cyvlfeat as vlfeat
+import cyvlfeat as vlfeat
+from scipy import stats
 import sklearn.metrics.pairwise as sklearn_pairwise
 from sklearn.svm import LinearSVC
 from IPython.core.debugger import set_trace
 from PIL import Image
 import scipy.spatial.distance as distance
-# from cyvlfeat.sift.dsift import dsift
-# from cyvlfeat.kmeans import kmeans
+from cyvlfeat.sift.dsift import dsift
+from cyvlfeat.kmeans import kmeans
+from cyvlfeat.kmeans import kmeans_quantize
+from sklearn.model_selection import KFold
 from time import time
 
 
@@ -45,7 +48,8 @@ def get_tiny_images(image_paths):
         img = load_image_gray(p)
         img_resize = cv2.resize(img,(16,16))
         img_vec = np.reshape(img_resize,(256,))
-        # img_vec = np.linalg.norm(img_vec)
+        img_vec = stats.zscore(img_vec) # zero mean
+        img_vec = img_vec/np.linalg.norm(img_vec) # normalization
         feats.append(list(img_vec))
 
     feats = np.array(feats)
@@ -98,6 +102,26 @@ def build_vocabulary(image_paths, vocab_size):
     -   vocab: This is a vocab_size x d numpy array (vocabulary). Each row is a
         cluster center / visual word
     """
+
+    dim = 128
+    vocab = np.zeros((vocab_size, dim))
+
+    #############################################################################
+    # TODO: YOUR CODE HERE                                                      #
+    #############################################################################
+    desc = []
+    for i,p in enumerate(image_paths):
+        img = load_image_gray(p)
+        frames, descriptors= dsift(img,fast=True,step=10)
+        desc.extend(list(descriptors))
+    desc = np.array(desc)
+    desc=desc.astype(np.float64)
+    print(desc.shape)
+    cluster_centers = kmeans(desc,vocab_size)
+    vocab = cluster_centers
+    #############################################################################
+    #                             END OF YOUR CODE                              #
+    #############################################################################
     # Load images from the training set. To save computation time, you don't
     # necessarily need to sample from all images, although it would be better
     # to do so. You can randomly sample the descriptors from each image to save
@@ -113,23 +137,10 @@ def build_vocabulary(image_paths, vocab_size):
     # visual word vocabulary.
 
     # length of the SIFT descriptors that you are going to compute.
-    dim = 128
-    vocab = np.zeros((vocab_size, dim))
-
-    #############################################################################
-    # TODO: YOUR CODE HERE                                                      #
-    #############################################################################
-
-
-
-    #############################################################################
-    #                             END OF YOUR CODE                              #
-    #############################################################################
-
     return vocab
 
 
-def get_bags_of_sifts(image_paths, vocab_filename):
+def get_bags_of_sifts(image_paths, vocab_filename, sift_step=5):
     """
     This feature representation is described in the handout, lecture
     materials, and Szeliski chapter 14.
@@ -191,10 +202,19 @@ def get_bags_of_sifts(image_paths, vocab_filename):
     # TODO: YOUR CODE HERE                                                      #
     #############################################################################
 
-    raise NotImplementedError('`get_bags_of_sifts` function in ' +
-                              '`student_code.py` needs to be implemented')
+    for p in image_paths:
+        hist = np.zeros(vocab.shape[0])
+        img = load_image_gray(p)
+        frames, descriptors = dsift(img,step=sift_step, fast=True)
+        descriptors = descriptors.astype(np.float64)
+        assignments = kmeans_quantize(descriptors,vocab) # assign each sift to a vocab index
+        for idx in assignments:
+            hist[idx]+=1
+        hist = hist/np.linalg.norm(hist)
+        feats.append(list(hist))
     
-
+    feats = np.array(feats)
+    print(feats.shape)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -243,14 +263,20 @@ def nearest_neighbor_classify(train_image_feats, train_labels, test_image_feats,
     # TODO: YOUR CODE HERE                                                      #
     #############################################################################
 
-    D = sklearn_pairwise.pairwise_distances(test_image_feats,train_image_feats) #d(i, j) is the distance between row
-            #i of X and row j of Y
-    k = 1
+    D = sklearn_pairwise.pairwise_distances(test_image_feats,train_image_feats,metric=metric) #d(i, j) is the distance between row i of test and row j of train
+    k = 10
     for row in D: # for each test image
         sorted_row = np.argsort(row)
         k_idx = sorted_row[:k]
         if k==1:
             test_labels.append(train_labels[k_idx[0]])
+        else:
+            knn = np.array(train_labels)[k_idx[:k]]
+            unique, counts = np.unique(knn, return_counts=True)
+            categories = dict(zip(unique,counts))
+            most_frequent = max(categories,key=categories.get) # find most frequent label in neighbors
+            test_labels.append(most_frequent)
+                
     # print(result)
     #############################################################################
     #                             END OF YOUR CODE                              #
@@ -298,10 +324,23 @@ def svm_classify(train_image_feats, train_labels, test_image_feats):
     #############################################################################
     # TODO: YOUR CODE HERE                                                      #
     #############################################################################
-
-    raise NotImplementedError('`svm_classify` function in ' +
-                              '`student_code.py` needs to be implemented')
-
+            
+    # train, each is a binary classifier
+    for cat,svm in svms.items():
+        y= [1 if i==cat else 0 for i in train_labels ]
+        svm.fit(train_image_feats,y)
+    
+    for t in test_image_feats:
+        confidences = []
+        for cat,svm in svms.items(): # calculate confidences for every svm
+            w = svm.coef_ # W*X + B
+            b = svm.intercept_
+            wx = np.dot(w,t)
+            conf = float(wx+b)
+            confidences.append(conf)
+        sorted_conf = np.argsort(confidences) # min to max
+        best_match = categories[sorted_conf[-1]]
+        test_labels.append(best_match)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
